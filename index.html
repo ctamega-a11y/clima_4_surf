@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0b1f31, #123d5d);
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+
+        .card {
+            position: relative;
+            isolation: isolate;
+            width: min(94vw, 760px);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 18px 22px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .conteudo {
+            position: relative;
+            z-index: 1;
+        }
+
+        .mapa {
+            position: absolute;
+            z-index: -1;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.22;
+            pointer-events: none;
+        }
+
+        .mapa::after {
+            position: absolute;
+            inset: 0;
+            background: rgba(4, 16, 28, 0.5);
+            content: '';
+        }
+
+        h1 {
+            margin: 0 0 3px;
+            font-size: 1.55rem;
+        }
+
+        .local {
+            margin: 0 0 12px;
+            opacity: 0.75;
+        }
+
+        .busca {
+            position: relative;
+            max-width: 520px;
+            margin: 0 auto 14px;
+        }
+
+        .busca input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: #fff;
+            background: rgba(3, 18, 31, 0.72);
+            font: inherit;
+            outline: none;
+        }
+
+        .busca input:focus { border-color: #9ed8f0; }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .sugestoes {
+            position: absolute;
+            z-index: 3;
+            top: calc(100% + 6px);
+            right: 0;
+            left: 0;
+            display: grid;
+            gap: 4px;
+            margin: 0;
+            padding: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            background: #102f49;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+            list-style: none;
+            text-align: left;
+        }
+
+        .sugestoes[hidden] { display: none; }
+
+        .sugestao {
+            width: 100%;
+            padding: 9px 10px;
+            border-radius: 6px;
+            color: #fff;
+            background: transparent;
+            font-size: 0.9rem;
+            font-weight: normal;
+            text-align: left;
+        }
+
+        .sugestao:hover, .sugestao:focus { color: #0b1f31; background: #9ed8f0; }
+
+        .temp {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .condicao {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .status {
+            min-height: 22px;
+            margin: 18px 0 0;
+            color: #ffd27d;
+            font-size: 0.9rem;
+        }
+
+        .alerta-ressaca {
+            margin: 18px 0 0;
+            padding: 12px 16px;
+            border: 1px solid #ffb15c;
+            border-radius: 8px;
+            color: #241507;
+            background: #ffc56e;
+            font-weight: bold;
+        }
+
+        .alerta-ressaca[hidden] { display: none; }
+
+        .dados {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .dado {
+            min-width: 0;
+            padding: 9px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.14);
+        }
+
+        .rotulo {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.68rem;
+            opacity: 0.72;
+        }
+
+        .valor {
+            display: block;
+            font-size: 1.05rem;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .unidade {
+            display: block;
+            min-height: 15px;
+            margin-top: 2px;
+            font-size: 0.68rem;
+            opacity: 0.7;
+        }
+
+        .acoes {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #0b1f31;
+            background: #9ed8f0;
+            cursor: pointer;
+            font: inherit;
+            font-weight: bold;
+        }
+
+        button:hover { background: #c5ebf8; }
+        button:disabled { cursor: wait; opacity: 0.65; }
+
+        .atualizacao {
+            margin: 0;
+            font-size: 0.78rem;
+            opacity: 0.7;
+        }
+
+        .copyright {
+            margin: 14px 0 0;
+            color: rgba(255, 255, 255, 0.58);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 620px) {
+            .card { padding: 16px 12px; }
+            .dados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .acoes { align-items: stretch; flex-direction: column; }
+        }
+
+        @media (min-width: 621px) and (max-width: 900px) {
+            .dados { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+
+        @media (min-width: 621px) and (max-height: 800px) {
+            .card { padding-top: 12px; padding-bottom: 12px; }
+            .busca { margin-bottom: 10px; }
+            .dados { margin-top: 12px; }
+            .dado { padding-top: 7px; padding-bottom: 7px; }
+            .acoes { margin-top: 10px; }
+            .copyright { margin-top: 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <svg class="mapa" viewBox="0 0 700 700" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <clipPath id="recorteBrasil">
+                    <path d="M177 118l28-27 42-9 35 12 38-13 43 13 35-4 36 17 43-1 34 22 28 5 28 32 37 16 16 28-10 28 16 26-8 27-19 22 5 29-16 23 2 34-20 23-10 36-29 12-18 32-30 13-16 29-31 14-30-10-25 23-35-3-25-20-35 5-28-17-34-5-20-27-31-10-17-31-21-17 8-29-15-24 19-29-2-27 24-25 7-31 22-16 8-31 28-18 14-27 31-13 10-23z" />
+                </clipPath>
+            </defs>
+            <path d="M177 118l28-27 42-9 35 12 38-13 43 13 35-4 36 17 43-1 34 22 28 5 28 32 37 16 16 28-10 28 16 26-8 27-19 22 5 29-16 23 2 34-20 23-10 36-29 12-18 32-30 13-16 29-31 14-30-10-25 23-35-3-25-20-35 5-28-17-34-5-20-27-31-10-17-31-21-17 8-29-15-24 19-29-2-27 24-25 7-31 22-16 8-31 28-18 14-27 31-13 10-23z" fill="#78a6bf" stroke="#b9e6f5" stroke-width="5" />
+            <g clip-path="url(#recorteBrasil)" opacity="0.9">
+                <path d="M120 75h230l-20 220-190 30z" fill="#287d68" />
+                <path d="M350 70h290l-5 240-300-5z" fill="#e1a541" />
+                <path d="M105 300h210l50 190-250 20z" fill="#8c8b43" />
+                <path d="M305 280h180l30 190-170 55z" fill="#487a91" />
+                <path d="M305 485h260l-25 150-285-25z" fill="#5d527f" />
+            </g>
+            <rect width="700" height="700" fill="#04101c" opacity="0.5" />
+        </svg>
+        <div class="conteudo">
+            <h1>Clima no Brasil</h1>
+            <p id="local" class="local">Rio de Janeiro, RJ</p>
+            <div class="busca">
+                <label class="sr-only" for="pesquisa">Pesquisar cidade brasileira</label>
+                <input id="pesquisa" type="search" placeholder="Pesquisar cidade brasileira" autocomplete="off">
+                <ul id="sugestoes" class="sugestoes" hidden></ul>
+            </div>
+            <div id="temp" class="temp">Carregando...</div>
+            <div id="condicao" class="condicao">Buscando clima...</div>
+            <div class="dados" aria-live="polite">
+                <div class="dado"><span class="rotulo">🌡️ Sensação</span><span id="sensacao" class="valor">Carregando...</span><span class="unidade">°C</span></div>
+                <div class="dado"><span class="rotulo">💧 Umidade</span><span id="umidade" class="valor">Carregando...</span><span class="unidade">%</span></div>
+                <div class="dado"><span class="rotulo">💨 Vento</span><span id="vento" class="valor">Carregando...</span><span class="unidade">km/h</span></div>
+                <div class="dado"><span class="rotulo">🧭 Direção</span><span id="direcao" class="valor">Carregando...</span><span id="graus" class="unidade">graus</span></div>
+                <div class="dado"><span class="rotulo">🌬️ Rajada</span><span id="rajada" class="valor">Carregando...</span><span class="unidade">km/h</span></div>
+                <div class="dado"><span class="rotulo">📏 Pressão</span><span id="pressao" class="valor">Carregando...</span><span class="unidade">hPa</span></div>
+                <div class="dado"><span class="rotulo">🌊 Ondas</span><span id="ondas" class="valor">Carregando...</span><span class="unidade">metros</span></div>
+                <div class="dado"><span class="rotulo">⏱️ Período</span><span id="periodo" class="valor">Carregando...</span><span class="unidade">segundos</span></div>
+                <div class="dado"><span class="rotulo">🧭 Ondulação</span><span id="direcaoOndas" class="valor">Carregando...</span><span class="unidade">direção</span></div>
+                <div class="dado"><span class="rotulo">🌙 Fase da lua</span><span id="lua" class="valor">Carregando...</span><span class="unidade">hoje</span></div>
+                <div class="dado"><span class="rotulo">🌊 Maré baixa</span><span id="mareBaixa" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+                <div class="dado"><span class="rotulo">🌊 Maré alta</span><span id="mareAlta" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+            </div>
+            <p id="alertaRessaca" class="alerta-ressaca" role="alert" hidden>Atenção mar em ressaca !!!</p>
+            <p id="status" class="status" role="status"></p>
+            <div class="acoes">
+                <button id="atualizar" type="button">↻ Atualizar clima</button>
+                <p id="atualizacao" class="atualizacao">Última atualização: --</p>
+            </div>
+            <footer class="copyright">© 2026 by Claudio Tamega</footer>
+        </div>
+    </div>
+
+    <script>
+        const cidadeInicial = {
+            nome: 'Rio de Janeiro',
+            estado: 'Rio de Janeiro',
+            latitude: -22.9068,
+            longitude: -43.1729
+        };
+        let cidadeSelecionada = cidadeInicial;
+        let temporizadorBusca;
+        let controladorBusca;
+        let idBusca = 0;
+        let idConsulta = 0;
+
+        function descreverCondicao(codigo) {
+            const condicoes = {
+                0: 'Céu limpo', 1: 'Predominantemente limpo', 2: 'Parcialmente nublado', 3: 'Nublado',
+                45: 'Névoa', 48: 'Névoa congelante', 51: 'Garoa leve', 53: 'Garoa moderada', 55: 'Garoa intensa',
+                56: 'Garoa congelante leve', 57: 'Garoa congelante intensa', 61: 'Chuva leve', 63: 'Chuva moderada',
+                65: 'Chuva intensa', 66: 'Chuva congelante leve', 67: 'Chuva congelante intensa', 71: 'Neve leve',
+                73: 'Neve moderada', 75: 'Neve intensa', 77: 'Granizo de neve', 80: 'Pancadas de chuva leves',
+                81: 'Pancadas de chuva moderadas', 82: 'Pancadas de chuva intensas', 85: 'Pancadas de neve leves',
+                86: 'Pancadas de neve intensas', 95: 'Trovoada', 96: 'Trovoada com granizo leve', 99: 'Trovoada com granizo intenso'
+            };
+            return condicoes[codigo] || 'Condição desconhecida';
+        }
+
+        function direcaoCardeal(graus) {
+            if (!Number.isFinite(Number(graus))) return 'Dados indisponíveis';
+            const pontos = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
+            return pontos[Math.round(Number(graus) / 45) % 8];
+        }
+
+        function formatarNumero(valor) {
+            if (valor === null || valor === undefined || valor === '') return 'Dados indisponíveis';
+            const numero = Number(valor);
+            return Number.isFinite(numero) ? numero.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : 'Dados indisponíveis';
+        }
+
+        function faseDaLua(data = new Date()) {
+            const luaNovaConhecida = Date.UTC(2000, 0, 6, 18, 14);
+            const cicloLunar = 29.530588853;
+            const diasDesdeLuaNova = (data.getTime() - luaNovaConhecida) / 86400000;
+            const idade = ((diasDesdeLuaNova % cicloLunar) + cicloLunar) % cicloLunar;
+            const indice = Math.floor((idade / cicloLunar) * 8) % 8;
+            const fases = [
+                ['🌑', 'Lua nova'], ['🌒', 'Lua crescente'], ['🌓', 'Quarto crescente'], ['🌔', 'Gibosa crescente'],
+                ['🌕', 'Lua cheia'], ['🌖', 'Gibosa minguante'], ['🌗', 'Quarto minguante'], ['🌘', 'Lua minguante']
+            ];
+            return `${fases[indice][0]} ${fases[indice][1]}`;
+        }
+
+        function calcularMares(horarios, niveis) {
+            if (!Array.isArray(horarios) || !Array.isArray(niveis) || horarios.length !== niveis.length) {
+                return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
+            }
+
+            const agora = Date.now();
+            const extremos = { baixa: [], alta: [] };
+            for (let indice = 1; indice < niveis.length - 1; indice += 1) {
+                const anterior = Number(niveis[indice - 1]);
+                const atual = Number(niveis[indice]);
+                const proximo = Number(niveis[indice + 1]);
+                const horario = new Date(`${horarios[indice]}:00-03:00`);
+                if (!Number.isFinite(anterior) || !Number.isFinite(atual) || !Number.isFinite(proximo) || Number.isNaN(horario.getTime()) || horario.getTime() < agora) continue;
+                if (atual <= anterior && atual <= proximo) extremos.baixa.push(horarios[indice].slice(11, 16));
+                if (atual >= anterior && atual >= proximo) extremos.alta.push(horarios[indice].slice(11, 16));
+            }
+
+            return {
+                baixa: extremos.baixa[0] || 'Dados indisponíveis',
+                alta: extremos.alta[0] || 'Dados indisponíveis'
+            };
+        }
+
+        function definirTexto(id, valor) {
+            document.getElementById(id).innerText = valor === null || valor === undefined || valor === '' ? 'Dados indisponíveis' : valor;
+        }
+
+        function marcarCarregando() {
+            ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao', 'ondas', 'periodo', 'direcaoOndas', 'lua', 'mareBaixa', 'mareAlta'].forEach((id) => definirTexto(id, 'Carregando...'));
+            document.getElementById('alertaRessaca').hidden = true;
+            document.getElementById('status').innerText = '';
+        }
+
+        function atualizarAlertaRessaca(altura) {
+            const numero = Number(altura);
+            document.getElementById('alertaRessaca').hidden = !Number.isFinite(numero) || numero <= 2;
+        }
+
+        async function buscarJson(url) {
+            const resposta = await fetch(url);
+            if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+            const dados = await resposta.json();
+            if (!dados || typeof dados !== 'object') throw new Error('Resposta inválida');
+            return dados;
+        }
+
+        function exibirSugestoes(resultados) {
+            const lista = document.getElementById('sugestoes');
+            lista.innerHTML = '';
+            resultados.forEach((resultado) => {
+                const item = document.createElement('li');
+                const botao = document.createElement('button');
+                botao.type = 'button';
+                botao.className = 'sugestao';
+                botao.innerText = `${resultado.name}, ${resultado.admin1 || 'Brasil'}`;
+                botao.addEventListener('click', () => selecionarCidade(resultado));
+                item.appendChild(botao);
+                lista.appendChild(item);
+            });
+            lista.hidden = resultados.length === 0;
+        }
+
+        async function pesquisarCidades(termo) {
+            const buscaAtual = ++idBusca;
+            if (controladorBusca) controladorBusca.abort();
+            controladorBusca = new AbortController();
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json&countryCode=BR`;
+
+            try {
+                const resposta = await fetch(url, { signal: controladorBusca.signal });
+                if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                const dados = await resposta.json();
+                if (buscaAtual !== idBusca) return;
+                const resultados = Array.isArray(dados.results) ? dados.results.filter((cidade) => String(cidade.country_code).toUpperCase() === 'BR') : [];
+                exibirSugestoes(resultados);
+                document.getElementById('status').innerText = resultados.length ? '' : 'Nenhuma cidade brasileira encontrada.';
+            } catch (erro) {
+                if (erro.name !== 'AbortError' && buscaAtual === idBusca) {
+                    exibirSugestoes([]);
+                    document.getElementById('status').innerText = 'Não foi possível pesquisar cidades. Tente novamente.';
+                }
+            }
+        }
+
+        function selecionarCidade(resultado) {
+            cidadeSelecionada = {
+                nome: resultado.name,
+                estado: resultado.admin1 || 'Brasil',
+                latitude: Number(resultado.latitude),
+                longitude: Number(resultado.longitude)
+            };
+            document.getElementById('pesquisa').value = '';
+            document.getElementById('sugestoes').hidden = true;
+            exibirCidade();
+            buscarClima(cidadeSelecionada);
+        }
+
+        function exibirCidade() {
+            definirTexto('local', `${cidadeSelecionada.nome}, ${cidadeSelecionada.estado}`);
+        }
+
+        async function buscarClima(cidade) {
+            const consultaAtual = ++idConsulta;
+            const botao = document.getElementById('atualizar');
+            botao.disabled = true;
+            marcarCarregando();
+            const parametros = new URLSearchParams({
+                latitude: cidade.latitude,
+                longitude: cidade.longitude,
+                current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure',
+                timezone: 'America/Sao_Paulo'
+            });
+            const parametrosMarinhos = new URLSearchParams({
+                latitude: cidade.latitude,
+                longitude: cidade.longitude,
+                current: 'wave_height,wave_period,wave_direction',
+                hourly: 'sea_level_height_msl',
+                forecast_days: '2',
+                timezone: 'America/Sao_Paulo'
+            });
+
+            try {
+                const respostas = await Promise.allSettled([
+                    buscarJson(`https://api.open-meteo.com/v1/forecast?${parametros}`),
+                    buscarJson(`https://marine-api.open-meteo.com/v1/marine?${parametrosMarinhos}`)
+                ]);
+                if (consultaAtual !== idConsulta) return;
+
+                const mensagens = [];
+                const tempo = respostas[0];
+                const marinha = respostas[1];
+                definirTexto('lua', faseDaLua());
+                if (tempo.status === 'fulfilled' && tempo.value.current && typeof tempo.value.current === 'object') {
+                    const atual = tempo.value.current;
+                    definirTexto('temp', `${formatarNumero(atual.temperature_2m)}°C`);
+                    definirTexto('condicao', descreverCondicao(atual.weather_code));
+                    definirTexto('sensacao', formatarNumero(atual.apparent_temperature));
+                    definirTexto('umidade', formatarNumero(atual.relative_humidity_2m));
+                    definirTexto('vento', formatarNumero(atual.wind_speed_10m));
+                    definirTexto('direcao', direcaoCardeal(atual.wind_direction_10m));
+                    definirTexto('graus', Number.isFinite(Number(atual.wind_direction_10m)) ? `${formatarNumero(atual.wind_direction_10m)}°` : 'graus');
+                    definirTexto('rajada', formatarNumero(atual.wind_gusts_10m));
+                    definirTexto('pressao', formatarNumero(atual.surface_pressure));
+                } else {
+                    mensagens.push('Não foi possível carregar os dados meteorológicos.');
+                    ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                }
+
+                if (marinha.status === 'fulfilled' && marinha.value.current && typeof marinha.value.current === 'object') {
+                    const atual = marinha.value.current;
+                    definirTexto('ondas', formatarNumero(atual.wave_height));
+                    definirTexto('periodo', formatarNumero(atual.wave_period));
+                    const direcaoOndas = direcaoCardeal(atual.wave_direction);
+                    definirTexto('direcaoOndas', direcaoOndas === 'Dados indisponíveis' ? direcaoOndas : `Ondulação de ${direcaoOndas}`);
+                    atualizarAlertaRessaca(atual.wave_height);
+                    const mares = calcularMares(marinha.value.hourly?.time, marinha.value.hourly?.sea_level_height_msl);
+                    definirTexto('mareBaixa', mares.baixa);
+                    definirTexto('mareAlta', mares.alta);
+                    if (atual.wave_height === null && atual.wave_period === null && atual.wave_direction === null) mensagens.push('Dados marítimos não disponíveis para esta cidade.');
+                } else {
+                    mensagens.push('Dados marítimos não disponíveis para esta cidade.');
+                    ['ondas', 'periodo', 'direcaoOndas', 'mareBaixa', 'mareAlta'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                    atualizarAlertaRessaca(null);
+                }
+
+                document.getElementById('status').innerText = mensagens.join(' ');
+                document.getElementById('atualizacao').innerText = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
+            } catch (erro) {
+                if (consultaAtual === idConsulta) document.getElementById('status').innerText = 'Não foi possível carregar o clima. Tente novamente.';
+            } finally {
+                if (consultaAtual === idConsulta) botao.disabled = false;
+            }
+        }
+
+        document.getElementById('pesquisa').addEventListener('input', (evento) => {
+            clearTimeout(temporizadorBusca);
+            const termo = evento.target.value.trim();
+            if (termo.length < 2) {
+                exibirSugestoes([]);
+                document.getElementById('status').innerText = '';
+                return;
+            }
+            temporizadorBusca = setTimeout(() => pesquisarCidades(termo), 350);
+        });
+        document.getElementById('atualizar').addEventListener('click', () => buscarClima(cidadeSelecionada));
+        document.addEventListener('click', (evento) => {
+            if (!evento.target.closest('.busca')) document.getElementById('sugestoes').hidden = true;
+        });
+        exibirCidade();
+        buscarClima(cidadeInicial);
+    </script>
+</body>
+</html>
