@@ -331,7 +331,7 @@
         }
 
         function direcaoCardeal(graus) {
-            if (!Number.isFinite(Number(graus))) return 'Dados indisponíveis';
+            if (graus === null || graus === undefined || graus === '' || !Number.isFinite(Number(graus))) return 'Dados indisponíveis';
             const pontos = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
             return pontos[Math.round(Number(graus) / 45) % 8];
         }
@@ -369,6 +369,9 @@
             if (typeof horarioAtualLocal !== 'string') return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
             const extremos = { baixa: [], alta: [] };
             for (let indice = 1; indice < niveis.length - 1; indice += 1) {
+                if (niveis[indice - 1] === null || niveis[indice - 1] === undefined || niveis[indice - 1] === '' ||
+                    niveis[indice] === null || niveis[indice] === undefined || niveis[indice] === '' ||
+                    niveis[indice + 1] === null || niveis[indice + 1] === undefined || niveis[indice + 1] === '') continue;
                 const anterior = Number(niveis[indice - 1]);
                 const atual = Number(niveis[indice]);
                 const proximo = Number(niveis[indice + 1]);
