@@ -155,6 +155,47 @@
             margin-top: 16px;
         }
 
+        .previsao {
+            margin-top: 16px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            background: rgba(130, 164, 196, 0.34);
+        }
+
+        .previsao h2 {
+            margin: 0 0 9px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .previsao-dias {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .previsao-dia {
+            display: grid;
+            justify-items: center;
+            gap: 5px;
+            min-width: 0;
+            padding: 10px 4px;
+            border-radius: 10px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.13);
+        }
+
+        .previsao-dia-nome {
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .previsao-icone { font-size: 1.15rem; line-height: 1; }
+        .previsao-maxima { font-size: 0.9rem; font-weight: bold; }
+        .previsao-minima { color: rgba(255, 255, 255, 0.72); font-size: 0.78rem; }
+        .previsao-vazia { grid-column: 1 / -1; margin: 4px; font-size: 0.85rem; }
+
         .dado {
             min-width: 0;
             padding: 9px 6px;
@@ -276,6 +317,12 @@
             </div>
             <div id="temp" class="temp">Carregando...</div>
             <div id="condicao" class="condicao">Buscando clima...</div>
+            <section class="previsao" aria-labelledby="titulo-previsao">
+                <h2 id="titulo-previsao">Próximos 4 dias</h2>
+                <div id="previsaoDias" class="previsao-dias" aria-live="polite">
+                    <p class="previsao-vazia">Carregando previsão...</p>
+                </div>
+            </section>
             <div class="dados" aria-live="polite">
                 <div class="dado"><span class="rotulo">🌡️ Sensação</span><span id="sensacao" class="valor">Carregando...</span><span class="unidade">°C</span></div>
                 <div class="dado"><span class="rotulo">💧 Umidade</span><span id="umidade" class="valor">Carregando...</span><span class="unidade">%</span></div>
@@ -392,8 +439,58 @@
 
         function marcarCarregando() {
             ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao', 'ondas', 'periodo', 'direcaoOndas', 'lua', 'mareBaixa', 'mareAlta', 'tempAgua', 'nascerSol', 'porSol'].forEach((id) => definirTexto(id, 'Carregando...'));
+            document.getElementById('previsaoDias').innerHTML = '<p class="previsao-vazia">Carregando previsão...</p>';
             document.getElementById('alertaRessaca').hidden = true;
             document.getElementById('status').innerText = '';
+        }
+
+        function iconeCondicao(codigo) {
+            if ([0].includes(Number(codigo))) return '☀️';
+            if ([1, 2].includes(Number(codigo))) return '⛅';
+            if ([3, 45, 48].includes(Number(codigo))) return '☁️';
+            if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(Number(codigo))) return '🌧️';
+            if ([71, 73, 75, 77, 85, 86].includes(Number(codigo))) return '❄️';
+            if ([95, 96, 99].includes(Number(codigo))) return '⛈️';
+            return '🌤️';
+        }
+
+        function exibirPrevisao(dadosDiarios) {
+            const container = document.getElementById('previsaoDias');
+            const datas = dadosDiarios?.time;
+            const codigos = dadosDiarios?.weather_code;
+            const maximas = dadosDiarios?.temperature_2m_max;
+            const minimas = dadosDiarios?.temperature_2m_min;
+            container.replaceChildren();
+
+            if (![datas, codigos, maximas, minimas].every(Array.isArray) || datas.length < 5) {
+                container.innerHTML = '<p class="previsao-vazia">Previsão indisponível.</p>';
+                return;
+            }
+
+            for (let indice = 1; indice <= 4; indice += 1) {
+                const [ano, mes, dia] = datas[indice].split('-').map(Number);
+                const data = new Date(ano, mes - 1, dia);
+                const nomeDia = data.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toLocaleUpperCase('pt-BR');
+                const item = document.createElement('div');
+                item.className = 'previsao-dia';
+                item.setAttribute('aria-label', `${nomeDia}: máxima de ${formatarNumero(maximas[indice])} graus, mínima de ${formatarNumero(minimas[indice])} graus`);
+
+                const nome = document.createElement('span');
+                nome.className = 'previsao-dia-nome';
+                nome.textContent = nomeDia;
+                const icone = document.createElement('span');
+                icone.className = 'previsao-icone';
+                icone.setAttribute('aria-hidden', 'true');
+                icone.textContent = iconeCondicao(codigos[indice]);
+                const maximaTexto = document.createElement('span');
+                maximaTexto.className = 'previsao-maxima';
+                maximaTexto.textContent = `${formatarNumero(maximas[indice])}°`;
+                const minimaTexto = document.createElement('span');
+                minimaTexto.className = 'previsao-minima';
+                minimaTexto.textContent = `${formatarNumero(minimas[indice])}°`;
+                item.append(nome, icone, maximaTexto, minimaTexto);
+                container.appendChild(item);
+            }
         }
 
         function atualizarAlertaRessaca(altura) {
@@ -475,7 +572,8 @@
                 latitude: cidade.latitude,
                 longitude: cidade.longitude,
                 current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure',
-                daily: 'sunrise,sunset',
+                daily: 'sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min',
+                forecast_days: '5',
                 timezone: 'auto'
             });
             const parametrosMarinhos = new URLSearchParams({
@@ -512,9 +610,11 @@
                     definirTexto('pressao', formatarNumero(atual.surface_pressure));
                     definirTexto('nascerSol', formatarHorario(tempo.value.daily?.sunrise?.[0]));
                     definirTexto('porSol', formatarHorario(tempo.value.daily?.sunset?.[0]));
+                    exibirPrevisao(tempo.value.daily);
                 } else {
                     mensagens.push('Não foi possível carregar os dados meteorológicos.');
                     ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao', 'nascerSol', 'porSol'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                    exibirPrevisao(null);
                 }
 
                 if (marinha.status === 'fulfilled' && marinha.value.current && typeof marinha.value.current === 'object') {
@@ -538,7 +638,10 @@
                 document.getElementById('status').innerText = mensagens.join(' ');
                 document.getElementById('atualizacao').innerText = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
             } catch (erro) {
-                if (consultaAtual === idConsulta) document.getElementById('status').innerText = 'Não foi possível carregar o clima. Tente novamente.';
+                if (consultaAtual === idConsulta) {
+                    document.getElementById('status').innerText = 'Não foi possível carregar o clima. Tente novamente.';
+                    exibirPrevisao(null);
+                }
             } finally {
                 if (consultaAtual === idConsulta) botao.disabled = false;
             }
