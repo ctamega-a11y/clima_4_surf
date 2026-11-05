@@ -267,11 +267,11 @@
             <rect width="700" height="700" fill="#04101c" opacity="0.5" />
         </svg>
         <div class="conteudo">
-            <h1>Clima no Brasil</h1>
-            <p id="local" class="local">Rio de Janeiro, RJ</p>
+            <h1>Clima no mundo</h1>
+            <p id="local" class="local">Rio de Janeiro, RJ, Brasil</p>
             <div class="busca">
-                <label class="sr-only" for="pesquisa">Pesquisar cidade brasileira</label>
-                <input id="pesquisa" type="search" placeholder="Pesquisar cidade brasileira" autocomplete="off">
+                <label class="sr-only" for="pesquisa">Pesquisar cidade no mundo</label>
+                <input id="pesquisa" type="search" placeholder="Pesquisar cidade no mundo" autocomplete="off">
                 <ul id="sugestoes" class="sugestoes" hidden></ul>
             </div>
             <div id="temp" class="temp">Carregando...</div>
@@ -306,7 +306,8 @@
     <script>
         const cidadeInicial = {
             nome: 'Rio de Janeiro',
-            estado: 'Rio de Janeiro',
+            estado: 'RJ',
+            pais: 'Brasil',
             latitude: -22.9068,
             longitude: -43.1729
         };
@@ -330,7 +331,7 @@
         }
 
         function direcaoCardeal(graus) {
-            if (!Number.isFinite(Number(graus))) return 'Dados indisponíveis';
+            if (graus === null || graus === undefined || graus === '' || !Number.isFinite(Number(graus))) return 'Dados indisponíveis';
             const pontos = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
             return pontos[Math.round(Number(graus) / 45) % 8];
         }
@@ -360,19 +361,21 @@
             return `${fases[indice][0]} ${fases[indice][1]}`;
         }
 
-        function calcularMares(horarios, niveis) {
+        function calcularMares(horarios, niveis, horarioAtualLocal) {
             if (!Array.isArray(horarios) || !Array.isArray(niveis) || horarios.length !== niveis.length) {
                 return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
             }
 
-            const agora = Date.now();
+            if (typeof horarioAtualLocal !== 'string') return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
             const extremos = { baixa: [], alta: [] };
             for (let indice = 1; indice < niveis.length - 1; indice += 1) {
+                if (niveis[indice - 1] === null || niveis[indice - 1] === undefined || niveis[indice - 1] === '' ||
+                    niveis[indice] === null || niveis[indice] === undefined || niveis[indice] === '' ||
+                    niveis[indice + 1] === null || niveis[indice + 1] === undefined || niveis[indice + 1] === '') continue;
                 const anterior = Number(niveis[indice - 1]);
                 const atual = Number(niveis[indice]);
                 const proximo = Number(niveis[indice + 1]);
-                const horario = new Date(`${horarios[indice]}:00-03:00`);
-                if (!Number.isFinite(anterior) || !Number.isFinite(atual) || !Number.isFinite(proximo) || Number.isNaN(horario.getTime()) || horario.getTime() < agora) continue;
+                if (!Number.isFinite(anterior) || !Number.isFinite(atual) || !Number.isFinite(proximo) || horarios[indice] < horarioAtualLocal) continue;
                 if (atual <= anterior && atual <= proximo) extremos.baixa.push(horarios[indice].slice(11, 16));
                 if (atual >= anterior && atual >= proximo) extremos.alta.push(horarios[indice].slice(11, 16));
             }
@@ -414,7 +417,8 @@
                 const botao = document.createElement('button');
                 botao.type = 'button';
                 botao.className = 'sugestao';
-                botao.innerText = `${resultado.name}, ${resultado.admin1 || 'Brasil'}`;
+                const regiao = resultado.admin1 ? `${resultado.admin1}, ` : '';
+                botao.innerText = `${resultado.name}, ${regiao}${resultado.country || resultado.country_code || 'País desconhecido'}`;
                 botao.addEventListener('click', () => selecionarCidade(resultado));
                 item.appendChild(botao);
                 lista.appendChild(item);
@@ -426,16 +430,16 @@
             const buscaAtual = ++idBusca;
             if (controladorBusca) controladorBusca.abort();
             controladorBusca = new AbortController();
-            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json&countryCode=BR`;
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json`;
 
             try {
                 const resposta = await fetch(url, { signal: controladorBusca.signal });
                 if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
                 const dados = await resposta.json();
                 if (buscaAtual !== idBusca) return;
-                const resultados = Array.isArray(dados.results) ? dados.results.filter((cidade) => String(cidade.country_code).toUpperCase() === 'BR') : [];
+                const resultados = Array.isArray(dados.results) ? dados.results : [];
                 exibirSugestoes(resultados);
-                document.getElementById('status').innerText = resultados.length ? '' : 'Nenhuma cidade brasileira encontrada.';
+                document.getElementById('status').innerText = resultados.length ? '' : 'Nenhuma cidade encontrada.';
             } catch (erro) {
                 if (erro.name !== 'AbortError' && buscaAtual === idBusca) {
                     exibirSugestoes([]);
@@ -447,7 +451,8 @@
         function selecionarCidade(resultado) {
             cidadeSelecionada = {
                 nome: resultado.name,
-                estado: resultado.admin1 || 'Brasil',
+                estado: resultado.admin1 || '',
+                pais: resultado.country || resultado.country_code || '',
                 latitude: Number(resultado.latitude),
                 longitude: Number(resultado.longitude)
             };
@@ -458,7 +463,7 @@
         }
 
         function exibirCidade() {
-            definirTexto('local', `${cidadeSelecionada.nome}, ${cidadeSelecionada.estado}`);
+            definirTexto('local', [cidadeSelecionada.nome, cidadeSelecionada.estado, cidadeSelecionada.pais].filter(Boolean).join(', '));
         }
 
         async function buscarClima(cidade) {
@@ -479,7 +484,7 @@
                 current: 'wave_height,wave_period,wave_direction,sea_surface_temperature',
                 hourly: 'sea_level_height_msl',
                 forecast_days: '2',
-                timezone: 'America/Sao_Paulo',
+                timezone: 'auto',
                 cell_selection: 'sea'
             });
 
@@ -520,7 +525,7 @@
                     const direcaoOndas = direcaoCardeal(atual.wave_direction);
                     definirTexto('direcaoOndas', direcaoOndas === 'Dados indisponíveis' ? direcaoOndas : `Ondulação de ${direcaoOndas}`);
                     atualizarAlertaRessaca(atual.wave_height);
-                    const mares = calcularMares(marinha.value.hourly?.time, marinha.value.hourly?.sea_level_height_msl);
+                    const mares = calcularMares(marinha.value.hourly?.time, marinha.value.hourly?.sea_level_height_msl, marinha.value.current?.time);
                     definirTexto('mareBaixa', mares.baixa);
                     definirTexto('mareAlta', mares.alta);
                     if (atual.wave_height === null && atual.wave_period === null && atual.wave_direction === null) mensagens.push('Dados marítimos não disponíveis para esta cidade.');
