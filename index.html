@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0b1f31, #fff);
+            font-family: Arial, sans-serif;
+            color: #5cd5fb;
+        }
+
+        .card {
+            position: relative;
+            isolation: isolate;
+            width: min(94vw, 760px);
+            background: rgba(255, 255, 255, 0.08);
+            background-image: linear-gradient(rgba(4, 16, 28, 0.58), rgba(4, 16, 28, 0.58)), url('https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1400&q=85');
+            background-position: center;
+            background-size: cover;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 18px 22px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .conteudo {
+            position: relative;
+            z-index: 1;
+        }
+
+        .mapa {
+            display: none;
+        }
+
+        h1 {
+            margin: 0 0 3px;
+            font-size: 1.55rem;
+        }
+
+        .local {
+            margin: 0 0 12px;
+            opacity: 0.75;
+        }
+
+        .busca {
+            position: relative;
+            max-width: 520px;
+            margin: 0 auto 14px;
+        }
+
+        .busca input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: #fff;
+            background: rgba(3, 18, 31, 0.72);
+            font: inherit;
+            outline: none;
+        }
+
+        .busca input:focus { border-color: #9ed8f0; }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .sugestoes {
+            position: absolute;
+            z-index: 3;
+            top: calc(100% + 6px);
+            right: 0;
+            left: 0;
+            display: grid;
+            gap: 4px;
+            margin: 0;
+            padding: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            background: #102f49;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+            list-style: none;
+            text-align: left;
+        }
+
+        .sugestoes[hidden] { display: none; }
+
+        .sugestao {
+            width: 100%;
+            padding: 9px 10px;
+            border-radius: 6px;
+            color: #fff;
+            background: transparent;
+            font-size: 0.9rem;
+            font-weight: normal;
+            text-align: left;
+        }
+
+        .sugestao:hover, .sugestao:focus { color: #0b1f31; background: #9ed8f0; }
+
+        .temp {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .condicao {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .status {
+            min-height: 22px;
+            margin: 18px 0 0;
+            color: #ffd27d;
+            font-size: 0.9rem;
+        }
+
+        .aviso-ondas {
+            display: grid;
+            gap: 8px;
+            margin: 18px 0 0;
+            padding: 12px 16px;
+            border: 1px solid #ffb15c;
+            border-radius: 8px;
+            color: #241507;
+            background: #ffc56e;
+            font-weight: bold;
+        }
+
+        .aviso-ondas p { margin: 0; }
+        .aviso-ondas[hidden] { display: none; }
+
+        .dados {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .previsao {
+            width: 80%;
+            margin: 10px auto 0;
+            padding: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            background: rgba(130, 164, 196, 0.34);
+        }
+
+        .previsao h2 {
+            margin: 0 0 5px;
+            color: #fff;
+            font-size: 0.72rem;
+        }
+
+        .previsao-dias {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 5px;
+        }
+
+        .previsao-dia {
+            display: grid;
+            justify-items: center;
+            gap: 3px;
+            min-width: 0;
+            padding: 6px 2px;
+            border-radius: 10px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.13);
+        }
+
+        .previsao-dia-nome {
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        .previsao-icone { font-size: 0.92rem; line-height: 1; }
+        .previsao-maxima { font-size: 0.72rem; font-weight: bold; }
+        .previsao-minima { color: rgba(255, 255, 255, 0.72); font-size: 0.62rem; }
+        .previsao-vazia { grid-column: 1 / -1; margin: 3px; font-size: 0.68rem; }
+
+        .mare-grafico {
+            grid-column: 1 / -1;
+            min-width: 0;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.14);
+            text-align: left;
+        }
+
+        .mare-grafico h2 { margin: 0 0 3px; color: #fff; font-size: 0.9rem; }
+        .mare-grafico p { margin: 0; font-size: 0.72rem; opacity: 0.72; }
+        .mare-grafico svg { display: block; width: 100%; height: auto; margin-top: 6px; overflow: visible; }
+        .mare-grafico .grade { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
+        .mare-grafico .linha-mare { fill: none; stroke: #8de5fa; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .mare-grafico .area-mare { fill: rgba(93, 213, 251, 0.16); }
+        .mare-grafico .ponto-mare { fill: #c5f5ff; stroke: #0b1f31; stroke-width: 2; }
+        .mare-grafico .rotulo-grafico { fill: rgba(255, 255, 255, 0.76); font: 11px Arial, sans-serif; }
+
+        .dado {
+            min-width: 0;
+            padding: 9px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.14);
+        }
+
+        .rotulo {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+            opacity: 0.72;
+        }
+
+        .rotulo-temperatura-agua { white-space: nowrap; }
+        .rotulo-temperatura-agua {
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        .valor {
+            display: block;
+            font-size: 1.05rem;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .unidade {
+            display: block;
+            min-height: 15px;
+            margin-top: 2px;
+            font-size: 0.68rem;
+            opacity: 0.7;
+        }
+
+        .acoes {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #0b1f31;
+            background: #9ed8f0;
+            cursor: pointer;
+            font: inherit;
+            font-weight: bold;
+        }
+
+        button:hover { background: #c5ebf8; }
+        button:disabled { cursor: wait; opacity: 0.65; }
+
+        .atualizacao {
+            margin: 0;
+            color: #9ed8f0;
+            font-size: 0.78rem;
+            opacity: 1;
+        }
+
+        .copyright {
+            margin: 14px 0 0;
+            color: rgba(255, 255, 255, 0.58);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 620px) {
+            .card { padding: 16px 12px; }
+            .dados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .acoes { align-items: stretch; flex-direction: column; }
+        }
+
+        @media (min-width: 621px) and (max-width: 900px) {
+            .dados { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+
+        @media (min-width: 621px) and (max-height: 800px) {
+            .card { padding-top: 12px; padding-bottom: 12px; }
+            .busca { margin-bottom: 10px; }
+            .dados { margin-top: 12px; }
+            .dado { padding-top: 7px; padding-bottom: 7px; }
+            .acoes { margin-top: 10px; }
+            .copyright { margin-top: 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <svg class="mapa" viewBox="0 0 700 700" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <clipPath id="recorteBrasil">
+                    <path d="M177 118l28-27 42-9 35 12 38-13 43 13 35-4 36 17 43-1 34 22 28 5 28 32 37 16 16 28-10 28 16 26-8 27-19 22 5 29-16 23 2 34-20 23-10 36-29 12-18 32-30 13-16 29-31 14-30-10-25 23-35-3-25-20-35 5-28-17-34-5-20-27-31-10-17-31-21-17 8-29-15-24 19-29-2-27 24-25 7-31 22-16 8-31 28-18 14-27 31-13 10-23z" />
+                </clipPath>
+            </defs>
+            <path d="M177 118l28-27 42-9 35 12 38-13 43 13 35-4 36 17 43-1 34 22 28 5 28 32 37 16 16 28-10 28 16 26-8 27-19 22 5 29-16 23 2 34-20 23-10 36-29 12-18 32-30 13-16 29-31 14-30-10-25 23-35-3-25-20-35 5-28-17-34-5-20-27-31-10-17-31-21-17 8-29-15-24 19-29-2-27 24-25 7-31 22-16 8-31 28-18 14-27 31-13 10-23z" fill="#78a6bf" stroke="#b9e6f5" stroke-width="5" />
+            <g clip-path="url(#recorteBrasil)" opacity="0.9">
+                <path d="M120 75h230l-20 220-190 30z" fill="#287d68" />
+                <path d="M350 70h290l-5 240-300-5z" fill="#e1a541" />
+                <path d="M105 300h210l50 190-250 20z" fill="#8c8b43" />
+                <path d="M305 280h180l30 190-170 55z" fill="#487a91" />
+                <path d="M305 485h260l-25 150-285-25z" fill="#5d527f" />
+            </g>
+            <rect width="700" height="700" fill="#04101c" opacity="0.5" />
+        </svg>
+        <div class="conteudo">
+            <h1>Clima no mundo</h1>
+            <p id="local" class="local">Rio de Janeiro, RJ, Brasil</p>
+            <div class="busca">
+                <label class="sr-only" for="pesquisa">Pesquisar cidade no mundo</label>
+                <input id="pesquisa" type="search" placeholder="Pesquisar cidade no mundo" autocomplete="off">
+                <ul id="sugestoes" class="sugestoes" hidden></ul>
+            </div>
+            <div id="temp" class="temp">Carregando...</div>
+            <div id="condicao" class="condicao">Buscando clima...</div>
+            <section class="previsao" aria-labelledby="titulo-previsao">
+                <h2 id="titulo-previsao">Próximos 4 dias</h2>
+                <div id="previsaoDias" class="previsao-dias" aria-live="polite">
+                    <p class="previsao-vazia">Carregando previsão...</p>
+                </div>
+            </section>
+            <div class="dados" aria-live="polite">
+                <div class="dado"><span class="rotulo">🌡️ Sensação</span><span id="sensacao" class="valor">Carregando...</span><span class="unidade">°C</span></div>
+                <div class="dado"><span class="rotulo">💧 Umidade</span><span id="umidade" class="valor">Carregando...</span><span class="unidade">%</span></div>
+                <div class="dado"><span class="rotulo">💨 Vento</span><span id="vento" class="valor">Carregando...</span><span class="unidade">velocidade sustentada</span></div>
+                <div class="dado"><span class="rotulo">🧭 Direção</span><span id="direcao" class="valor">Carregando...</span><span id="graus" class="unidade">graus</span></div>
+                <div class="dado"><span class="rotulo">🍃 Rajada</span><span id="rajada" class="valor">Carregando...</span><span class="unidade">km/h · nós</span></div>
+                <div class="dado"><span class="rotulo">📏 Pressão</span><span id="pressao" class="valor">Carregando...</span><span class="unidade">hPa</span></div>
+                <div class="dado"><span class="rotulo">🏄‍♀️ Ondas</span><span id="ondas" class="valor">Carregando...</span><span class="unidade">metros</span></div>
+                <div class="dado"><span class="rotulo">⏱️ Período</span><span id="periodo" class="valor">Carregando...</span><span class="unidade">segundos</span></div>
+                <div class="dado"><span class="rotulo">🧭 Ondulação</span><span id="direcaoOndas" class="valor">Carregando...</span><span class="unidade">direção</span></div>
+                <div class="dado"><span class="rotulo">🌙 Fase da lua</span><span id="lua" class="valor">Carregando...</span><span class="unidade">hoje</span></div>
+                <div class="dado"><span class="rotulo">🌊 Maré baixa</span><span id="mareBaixa" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+                <div class="dado"><span class="rotulo">🌊 Maré alta</span><span id="mareAlta" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+                <div class="dado"><span class="rotulo rotulo-temperatura-agua">🪸 Temp. da Água</span><span id="tempAgua" class="valor">Carregando...</span><span class="unidade">°C</span></div>
+                <div class="dado"><span class="rotulo">☀️ Índice UV atual</span><span id="indiceUv" class="valor">Carregando...</span><span id="nivelUv" class="unidade">escala UV</span></div>
+                <div class="dado"><span class="rotulo">🕒 Pico do UV</span><span id="picoUvHorario" class="valor">Carregando...</span><span id="picoUvValor" class="unidade">índice máximo hoje</span></div>
+                <div class="dado"><span class="rotulo">🌅 Nascer do sol</span><span id="nascerSol" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+                <div class="dado"><span class="rotulo">🌇 Pôr do sol</span><span id="porSol" class="valor">Carregando...</span><span class="unidade">horário local</span></div>
+                <section class="mare-grafico" aria-labelledby="titulo-grafico-mare">
+                    <h2 id="titulo-grafico-mare">🌊 Variação da maré</h2>
+                    <p>Nível previsto nas próximas horas; valores em metros.</p>
+                    <svg id="graficoMare" viewBox="0 0 720 180" role="img" aria-label="Gráfico de previsão da maré"></svg>
+                    <p id="mareGraficoStatus" role="status">Carregando dados da maré...</p>
+                </section>
+            </div>
+            <div id="avisoOndas" class="aviso-ondas" role="status" aria-live="polite" hidden></div>
+            <p id="status" class="status" role="status"></p>
+            <div class="acoes">
+                <button id="atualizar" type="button">↻ Atualizar clima</button>
+                <p id="atualizacao" class="atualizacao">Última atualização: --</p>
+            </div>
+            <footer class="copyright">© 2026 by Claudio Tamega</footer>
+        </div>
+    </div>
+
+    <script>
+        const cidadeInicial = {
+            nome: 'Rio de Janeiro',
+            estado: 'RJ',
+            pais: 'Brasil',
+            latitude: -22.9068,
+            longitude: -43.1729
+        };
+        let cidadeSelecionada = cidadeInicial;
+        let temporizadorBusca;
+        let controladorBusca;
+        let idBusca = 0;
+        let idConsulta = 0;
+
+        function descreverCondicao(codigo) {
+            const condicoes = {
+                0: 'Céu limpo', 1: 'Predominantemente limpo', 2: 'Parcialmente nublado', 3: 'Nublado',
+                45: 'Névoa', 48: 'Névoa congelante', 51: 'Garoa leve', 53: 'Garoa moderada', 55: 'Garoa intensa',
+                56: 'Garoa congelante leve', 57: 'Garoa congelante intensa', 61: 'Chuva leve', 63: 'Chuva moderada',
+                65: 'Chuva intensa', 66: 'Chuva congelante leve', 67: 'Chuva congelante intensa', 71: 'Neve leve',
+                73: 'Neve moderada', 75: 'Neve intensa', 77: 'Granizo de neve', 80: 'Pancadas de chuva leves',
+                81: 'Pancadas de chuva moderadas', 82: 'Pancadas de chuva intensas', 85: 'Pancadas de neve leves',
+                86: 'Pancadas de neve intensas', 95: 'Trovoada', 96: 'Trovoada com granizo leve', 99: 'Trovoada com granizo intenso'
+            };
+            return condicoes[codigo] || 'Condição desconhecida';
+        }
+
+        function direcaoCardeal(graus) {
+            if (graus === null || graus === undefined || graus === '' || !Number.isFinite(Number(graus))) return 'Dados indisponíveis';
+            const pontos = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
+            return pontos[Math.round(Number(graus) / 45) % 8];
+        }
+
+        function formatarNumero(valor) {
+            if (valor === null || valor === undefined || valor === '') return 'Dados indisponíveis';
+            const numero = Number(valor);
+            return Number.isFinite(numero) ? numero.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : 'Dados indisponíveis';
+        }
+
+        function formatarHorario(valor) {
+            return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor)
+                ? valor.slice(11, 16)
+                : 'Dados indisponíveis';
+        }
+
+        function formatarVento(valor) {
+            const numero = Number(valor);
+            if (valor === null || valor === undefined || valor === '' || !Number.isFinite(numero)) return 'Dados indisponíveis';
+            return `${formatarNumero(numero)} km/h · ${formatarNumero(numero / 1.852)} nós`;
+        }
+
+        function dadosIndiceUV(horarios, indices, horarioAtual) {
+            if (!Array.isArray(horarios) || !Array.isArray(indices) || typeof horarioAtual !== 'string') return null;
+            const dataAtual = horarioAtual.slice(0, 10);
+            const valoresHoje = horarios.map((horario, indice) => ({
+                horario,
+                valor: Number(indices[indice]),
+                indice
+            })).filter(item => typeof item.horario === 'string' && item.horario.slice(0, 10) === dataAtual &&
+                indices[item.indice] !== null && indices[item.indice] !== undefined && indices[item.indice] !== '' && Number.isFinite(item.valor));
+            if (!valoresHoje.length) return null;
+            const atual = valoresHoje.find(item => item.horario.slice(0, 13) === horarioAtual.slice(0, 13));
+            const pico = valoresHoje.reduce((maior, item) => item.valor > maior.valor ? item : maior);
+            return { atual: atual?.valor, pico: pico.valor, horarioPico: formatarHorario(pico.horario) };
+        }
+
+        function nivelUV(valor) {
+            if (!Number.isFinite(Number(valor))) return 'escala UV';
+            const indice = Number(valor);
+            if (indice < 3) return 'Baixo';
+            if (indice < 6) return 'Moderado';
+            if (indice < 8) return 'Alto';
+            if (indice < 11) return 'Muito alto';
+            return 'Extremo';
+        }
+
+        function faseDaLua(data = new Date()) {
+            const luaNovaConhecida = Date.UTC(2000, 0, 6, 18, 14);
+            const cicloLunar = 29.530588853;
+            const diasDesdeLuaNova = (data.getTime() - luaNovaConhecida) / 86400000;
+            const idade = ((diasDesdeLuaNova % cicloLunar) + cicloLunar) % cicloLunar;
+            const indice = Math.floor((idade / cicloLunar) * 8) % 8;
+            const fases = [
+                ['🌑', 'Lua nova'], ['🌒', 'Lua crescente'], ['🌓', 'Quarto crescente'], ['🌔', 'Gibosa crescente'],
+                ['🌕', 'Lua cheia'], ['🌖', 'Gibosa minguante'], ['🌗', 'Quarto minguante'], ['🌘', 'Lua minguante']
+            ];
+            return `${fases[indice][0]} ${fases[indice][1]}`;
+        }
+
+        function calcularMares(horarios, niveis, horarioAtualLocal) {
+            if (!Array.isArray(horarios) || !Array.isArray(niveis) || horarios.length !== niveis.length) {
+                return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
+            }
+
+            if (typeof horarioAtualLocal !== 'string') return { baixa: 'Dados indisponíveis', alta: 'Dados indisponíveis' };
+            const extremos = { baixa: [], alta: [] };
+            for (let indice = 1; indice < niveis.length - 1; indice += 1) {
+                if (niveis[indice - 1] === null || niveis[indice - 1] === undefined || niveis[indice - 1] === '' ||
+                    niveis[indice] === null || niveis[indice] === undefined || niveis[indice] === '' ||
+                    niveis[indice + 1] === null || niveis[indice + 1] === undefined || niveis[indice + 1] === '') continue;
+                const anterior = Number(niveis[indice - 1]);
+                const atual = Number(niveis[indice]);
+                const proximo = Number(niveis[indice + 1]);
+                if (!Number.isFinite(anterior) || !Number.isFinite(atual) || !Number.isFinite(proximo) || horarios[indice] < horarioAtualLocal) continue;
+                if (atual <= anterior && atual <= proximo) extremos.baixa.push(horarios[indice].slice(11, 16));
+                if (atual >= anterior && atual >= proximo) extremos.alta.push(horarios[indice].slice(11, 16));
+            }
+
+            return {
+                baixa: extremos.baixa[0] || 'Dados indisponíveis',
+                alta: extremos.alta[0] || 'Dados indisponíveis'
+            };
+        }
+
+        function desenharGraficoMare(horarios, niveis) {
+            const svg = document.getElementById('graficoMare');
+            const status = document.getElementById('mareGraficoStatus');
+            const dados = Array.isArray(horarios) && Array.isArray(niveis)
+                ? horarios.map((horario, indice) => ({ horario, nivel: Number(niveis[indice]), nivelOriginal: niveis[indice] }))
+                    .filter(item => typeof item.horario === 'string' && item.nivelOriginal !== null &&
+                        item.nivelOriginal !== undefined && item.nivelOriginal !== '' && Number.isFinite(item.nivel))
+                : [];
+            svg.replaceChildren();
+            if (dados.length < 2) {
+                svg.setAttribute('aria-label', 'Gráfico de maré indisponível');
+                status.textContent = 'Não há dados de previsão da maré para este local.';
+                return;
+            }
+
+            const ns = 'http://www.w3.org/2000/svg';
+            const criar = (nome, atributos, texto) => {
+                const elemento = document.createElementNS(ns, nome);
+                Object.entries(atributos).forEach(([chave, valor]) => elemento.setAttribute(chave, valor));
+                if (texto !== undefined) elemento.textContent = texto;
+                svg.appendChild(elemento);
+                return elemento;
+            };
+            const esquerda = 52, direita = 708, topo = 14, base = 142;
+            const valores = dados.map(item => item.nivel);
+            let minimo = Math.min(...valores), maximo = Math.max(...valores);
+            if (minimo === maximo) { minimo -= 0.1; maximo += 0.1; }
+            const x = indice => esquerda + indice * (direita - esquerda) / (dados.length - 1);
+            const y = valor => base - (valor - minimo) * (base - topo) / (maximo - minimo);
+
+            for (let linha = 0; linha < 3; linha += 1) {
+                const posicao = topo + linha * (base - topo) / 2;
+                const valor = maximo - linha * (maximo - minimo) / 2;
+                criar('line', { x1: esquerda, y1: posicao, x2: direita, y2: posicao, class: 'grade' });
+                criar('text', { x: esquerda - 7, y: posicao + 4, 'text-anchor': 'end', class: 'rotulo-grafico' }, formatarNumero(valor));
+            }
+
+            const pontos = dados.map((item, indice) => `${x(indice)},${y(item.nivel)}`).join(' ');
+            criar('polygon', { points: `${esquerda},${base} ${pontos} ${direita},${base}`, class: 'area-mare' });
+            criar('polyline', { points: pontos, class: 'linha-mare' });
+            const passo = Math.max(1, Math.floor((dados.length - 1) / 6));
+            dados.forEach((item, indice) => {
+                if (indice % passo === 0 || indice === dados.length - 1) {
+                    const ponto = criar('circle', { cx: x(indice), cy: y(item.nivel), r: 3.5, class: 'ponto-mare' });
+                    const titulo = document.createElementNS(ns, 'title');
+                    titulo.textContent = `${item.horario.slice(8, 10)}/${item.horario.slice(5, 7)} ${formatarHorario(item.horario)} · ${formatarNumero(item.nivel)} m`;
+                    ponto.appendChild(titulo);
+                }
+            });
+            [0, Math.floor((dados.length - 1) / 2), dados.length - 1].forEach(indice => {
+                const item = dados[indice];
+                const rotulo = `${item.horario.slice(8, 10)}/${item.horario.slice(5, 7)} ${formatarHorario(item.horario)}`;
+                criar('text', { x: x(indice), y: 166, 'text-anchor': indice === 0 ? 'start' : indice === dados.length - 1 ? 'end' : 'middle', class: 'rotulo-grafico' }, rotulo);
+            });
+            svg.setAttribute('aria-label', `Previsão do nível da maré de ${dados[0].horario.slice(8, 10)}/${dados[0].horario.slice(5, 7)} ${formatarHorario(dados[0].horario)} a ${dados[dados.length - 1].horario.slice(8, 10)}/${dados[dados.length - 1].horario.slice(5, 7)} ${formatarHorario(dados[dados.length - 1].horario)}`);
+            status.textContent = 'Previsão fornecida pelo modelo marítimo; níveis podem variar das condições locais.';
+        }
+
+        function definirTexto(id, valor) {
+            document.getElementById(id).innerText = valor === null || valor === undefined || valor === '' ? 'Dados indisponíveis' : valor;
+        }
+
+        function marcarCarregando() {
+            ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao', 'ondas', 'periodo', 'direcaoOndas', 'lua', 'mareBaixa', 'mareAlta', 'tempAgua', 'indiceUv', 'picoUvHorario', 'picoUvValor', 'nascerSol', 'porSol'].forEach((id) => definirTexto(id, 'Carregando...'));
+            definirTexto('nivelUv', 'escala UV');
+            document.getElementById('graficoMare').replaceChildren();
+            document.getElementById('mareGraficoStatus').innerText = 'Carregando dados da maré...';
+            document.getElementById('previsaoDias').innerHTML = '<p class="previsao-vazia">Carregando previsão...</p>';
+            const avisoOndas = document.getElementById('avisoOndas');
+            avisoOndas.hidden = true;
+            avisoOndas.innerText = '';
+            document.getElementById('status').innerText = '';
+        }
+
+        function iconeCondicao(codigo) {
+            if ([0].includes(Number(codigo))) return '☀️';
+            if ([1, 2].includes(Number(codigo))) return '⛅';
+            if ([3, 45, 48].includes(Number(codigo))) return '☁️';
+            if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(Number(codigo))) return '🌧️';
+            if ([71, 73, 75, 77, 85, 86].includes(Number(codigo))) return '❄️';
+            if ([95, 96, 99].includes(Number(codigo))) return '⛈️';
+            return '🌤️';
+        }
+
+        function exibirPrevisao(dadosDiarios) {
+            const container = document.getElementById('previsaoDias');
+            const datas = dadosDiarios?.time;
+            const codigos = dadosDiarios?.weather_code;
+            const maximas = dadosDiarios?.temperature_2m_max;
+            const minimas = dadosDiarios?.temperature_2m_min;
+            container.replaceChildren();
+
+            if (![datas, codigos, maximas, minimas].every(Array.isArray) || datas.length < 5) {
+                container.innerHTML = '<p class="previsao-vazia">Previsão indisponível.</p>';
+                return;
+            }
+
+            for (let indice = 1; indice <= 4; indice += 1) {
+                const [ano, mes, dia] = datas[indice].split('-').map(Number);
+                const data = new Date(ano, mes - 1, dia);
+                const nomeDia = data.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toLocaleUpperCase('pt-BR');
+                const item = document.createElement('div');
+                item.className = 'previsao-dia';
+                item.setAttribute('aria-label', `${nomeDia}: máxima de ${formatarNumero(maximas[indice])} graus, mínima de ${formatarNumero(minimas[indice])} graus`);
+
+                const nome = document.createElement('span');
+                nome.className = 'previsao-dia-nome';
+                nome.textContent = nomeDia;
+                const icone = document.createElement('span');
+                icone.className = 'previsao-icone';
+                icone.setAttribute('aria-hidden', 'true');
+                icone.textContent = iconeCondicao(codigos[indice]);
+                const maximaTexto = document.createElement('span');
+                maximaTexto.className = 'previsao-maxima';
+                maximaTexto.textContent = `${formatarNumero(maximas[indice])}°`;
+                const minimaTexto = document.createElement('span');
+                minimaTexto.className = 'previsao-minima';
+                minimaTexto.textContent = `${formatarNumero(minimas[indice])}°`;
+                item.append(nome, icone, maximaTexto, minimaTexto);
+                container.appendChild(item);
+            }
+        }
+
+        function atualizarAvisosCondicoes(altura, periodo, rajada, temperaturaAgua, indiceUv) {
+            const aviso = document.getElementById('avisoOndas');
+            const temAltura = altura !== null && altura !== undefined && altura !== '' && Number.isFinite(Number(altura));
+            const temPeriodo = periodo !== null && periodo !== undefined && periodo !== '' && Number.isFinite(Number(periodo));
+            const temRajada = rajada !== null && rajada !== undefined && rajada !== '' && Number.isFinite(Number(rajada));
+            const temTemperaturaAgua = temperaturaAgua !== null && temperaturaAgua !== undefined && temperaturaAgua !== '' && Number.isFinite(Number(temperaturaAgua));
+            const temIndiceUv = indiceUv !== null && indiceUv !== undefined && indiceUv !== '' && Number.isFinite(Number(indiceUv));
+            const mensagens = [];
+            if (temAltura) {
+                const metros = Number(altura);
+                if (metros > 2.5) mensagens.push('Mar Storm. Só macho pra entrar. Prossiga com cuidado!');
+                else if (metros > 2) mensagens.push('O mar passou de 2 metros. Hoje ele não está pra peixe. 🐟');
+                else if (metros < 0.5) mensagens.push('Mar de piscina hoje. SUP ou bóia de câmara de ar, você decide.');
+            }
+            if (temPeriodo && Number(periodo) > 12) {
+                mensagens.push('Período longo: as ondas vêm de longe e chegam com força.');
+            }
+            if (temRajada) {
+                const kmh = Number(rajada);
+                if (kmh > 60) mensagens.push('Vento de derrubar gente em pé. Hoje é dia de assistir, não de remar.');
+                else if (kmh > 40) mensagens.push('Rajada de 40+. Seu guarda-sol já deve está voando, só você que ainda não percebeu.');
+            }
+            if (temTemperaturaAgua) {
+                const graus = Number(temperaturaAgua);
+                if (graus < 20) mensagens.push(`Água a ${formatarNumero(graus)}°C. Coragem é diferente de teimosia — considere o neoprene.`);
+                else if (graus > 27) mensagens.push(`Água a ${formatarNumero(graus)}°C. O mar virou jacuzzi, aproveite.`);
+            }
+            if (temIndiceUv && Number(indiceUv) > 10) {
+                mensagens.push('UV extremo. Protetor 50+, camisa, óculos e boné — o sol não negocia.');
+            }
+            aviso.replaceChildren(...mensagens.map(mensagem => {
+                const item = document.createElement('p');
+                item.textContent = mensagem;
+                return item;
+            }));
+            aviso.hidden = mensagens.length === 0;
+        }
+
+        async function buscarJson(url) {
+            const resposta = await fetch(url);
+            if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+            const dados = await resposta.json();
+            if (!dados || typeof dados !== 'object') throw new Error('Resposta inválida');
+            return dados;
+        }
+
+        function exibirSugestoes(resultados) {
+            const lista = document.getElementById('sugestoes');
+            lista.innerHTML = '';
+            resultados.forEach((resultado) => {
+                const item = document.createElement('li');
+                const botao = document.createElement('button');
+                botao.type = 'button';
+                botao.className = 'sugestao';
+                const regiao = resultado.admin1 ? `${resultado.admin1}, ` : '';
+                botao.innerText = `${resultado.name}, ${regiao}${resultado.country || resultado.country_code || 'País desconhecido'}`;
+                botao.addEventListener('click', () => selecionarCidade(resultado));
+                item.appendChild(botao);
+                lista.appendChild(item);
+            });
+            lista.hidden = resultados.length === 0;
+        }
+
+        async function pesquisarCidades(termo) {
+            const buscaAtual = ++idBusca;
+            if (controladorBusca) controladorBusca.abort();
+            controladorBusca = new AbortController();
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json`;
+
+            try {
+                const resposta = await fetch(url, { signal: controladorBusca.signal });
+                if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                const dados = await resposta.json();
+                if (buscaAtual !== idBusca) return;
+                const resultados = Array.isArray(dados.results) ? dados.results : [];
+                exibirSugestoes(resultados);
+                document.getElementById('status').innerText = resultados.length ? '' : 'Nenhuma cidade encontrada.';
+            } catch (erro) {
+                if (erro.name !== 'AbortError' && buscaAtual === idBusca) {
+                    exibirSugestoes([]);
+                    document.getElementById('status').innerText = 'Não foi possível pesquisar cidades. Tente novamente.';
+                }
+            }
+        }
+
+        function selecionarCidade(resultado) {
+            cidadeSelecionada = {
+                nome: resultado.name,
+                estado: resultado.admin1 || '',
+                pais: resultado.country || resultado.country_code || '',
+                latitude: Number(resultado.latitude),
+                longitude: Number(resultado.longitude)
+            };
+            document.getElementById('pesquisa').value = '';
+            document.getElementById('sugestoes').hidden = true;
+            exibirCidade();
+            buscarClima(cidadeSelecionada);
+        }
+
+        function exibirCidade() {
+            definirTexto('local', [cidadeSelecionada.nome, cidadeSelecionada.estado, cidadeSelecionada.pais].filter(Boolean).join(', '));
+        }
+
+        async function buscarClima(cidade) {
+            const consultaAtual = ++idConsulta;
+            const botao = document.getElementById('atualizar');
+            botao.disabled = true;
+            marcarCarregando();
+            const parametros = new URLSearchParams({
+                latitude: cidade.latitude,
+                longitude: cidade.longitude,
+                current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure',
+                hourly: 'uv_index',
+                daily: 'sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min',
+                forecast_days: '5',
+                timezone: 'auto'
+            });
+            const parametrosMarinhos = new URLSearchParams({
+                latitude: cidade.latitude,
+                longitude: cidade.longitude,
+                current: 'wave_height,wave_period,wave_direction,sea_surface_temperature',
+                hourly: 'sea_level_height_msl',
+                forecast_days: '2',
+                timezone: 'auto',
+                cell_selection: 'sea'
+            });
+
+            try {
+                const respostas = await Promise.allSettled([
+                    buscarJson(`https://api.open-meteo.com/v1/forecast?${parametros}`),
+                    buscarJson(`https://marine-api.open-meteo.com/v1/marine?${parametrosMarinhos}`)
+                ]);
+                if (consultaAtual !== idConsulta) return;
+
+                const mensagens = [];
+                const tempo = respostas[0];
+                const marinha = respostas[1];
+                const condicoesVento = tempo.status === 'fulfilled' && tempo.value.current && typeof tempo.value.current === 'object'
+                    ? tempo.value.current
+                    : null;
+                const condicoesMar = marinha.status === 'fulfilled' && marinha.value.current && typeof marinha.value.current === 'object'
+                    ? marinha.value.current
+                    : null;
+                const uvAtual = condicoesVento
+                    ? dadosIndiceUV(tempo.value.hourly?.time, tempo.value.hourly?.uv_index, condicoesVento.time)?.atual
+                    : null;
+                definirTexto('lua', faseDaLua());
+                if (condicoesVento) {
+                    const atual = condicoesVento;
+                    definirTexto('temp', `${formatarNumero(atual.temperature_2m)}°C`);
+                    definirTexto('condicao', descreverCondicao(atual.weather_code));
+                    definirTexto('sensacao', formatarNumero(atual.apparent_temperature));
+                    definirTexto('umidade', formatarNumero(atual.relative_humidity_2m));
+                    definirTexto('vento', formatarVento(atual.wind_speed_10m));
+                    definirTexto('direcao', direcaoCardeal(atual.wind_direction_10m));
+                    definirTexto('graus', Number.isFinite(Number(atual.wind_direction_10m)) ? `${formatarNumero(atual.wind_direction_10m)}°` : 'graus');
+                    definirTexto('rajada', formatarVento(atual.wind_gusts_10m));
+                    const uv = dadosIndiceUV(tempo.value.hourly?.time, tempo.value.hourly?.uv_index, atual.time);
+                    definirTexto('indiceUv', uv?.atual === undefined ? 'Dados indisponíveis' : formatarNumero(uv.atual));
+                    definirTexto('nivelUv', nivelUV(uv?.atual));
+                    definirTexto('picoUvHorario', uv?.horarioPico || 'Dados indisponíveis');
+                    definirTexto('picoUvValor', uv ? `índice ${formatarNumero(uv.pico)} · ${nivelUV(uv.pico)}` : 'índice máximo hoje indisponível');
+                    definirTexto('pressao', formatarNumero(atual.surface_pressure));
+                    definirTexto('nascerSol', formatarHorario(tempo.value.daily?.sunrise?.[0]));
+                    definirTexto('porSol', formatarHorario(tempo.value.daily?.sunset?.[0]));
+                    exibirPrevisao(tempo.value.daily);
+                } else {
+                    mensagens.push('Não foi possível carregar os dados meteorológicos.');
+                    ['temp', 'condicao', 'sensacao', 'umidade', 'vento', 'direcao', 'rajada', 'pressao', 'nascerSol', 'porSol'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                    ['indiceUv', 'nivelUv', 'picoUvHorario', 'picoUvValor'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                    exibirPrevisao(null);
+                }
+
+                if (condicoesMar) {
+                    const atual = condicoesMar;
+                    definirTexto('ondas', formatarNumero(atual.wave_height));
+                    definirTexto('periodo', formatarNumero(atual.wave_period));
+                    definirTexto('tempAgua', formatarNumero(atual.sea_surface_temperature));
+                    const direcaoOndas = direcaoCardeal(atual.wave_direction);
+                    definirTexto('direcaoOndas', direcaoOndas === 'Dados indisponíveis' ? direcaoOndas : `Ondulação de ${direcaoOndas}`);
+                    const mares = calcularMares(marinha.value.hourly?.time, marinha.value.hourly?.sea_level_height_msl, marinha.value.current?.time);
+                    definirTexto('mareBaixa', mares.baixa);
+                    definirTexto('mareAlta', mares.alta);
+                    desenharGraficoMare(marinha.value.hourly?.time, marinha.value.hourly?.sea_level_height_msl);
+                    if (atual.wave_height === null && atual.wave_period === null && atual.wave_direction === null) mensagens.push('Dados marítimos não disponíveis para esta cidade.');
+                } else {
+                    mensagens.push('Dados marítimos não disponíveis para esta cidade.');
+                    ['ondas', 'periodo', 'direcaoOndas', 'mareBaixa', 'mareAlta', 'tempAgua'].forEach((id) => definirTexto(id, 'Dados indisponíveis'));
+                    desenharGraficoMare(null, null);
+                }
+
+                atualizarAvisosCondicoes(condicoesMar?.wave_height, condicoesMar?.wave_period, condicoesVento?.wind_gusts_10m, condicoesMar?.sea_surface_temperature, uvAtual);
+                document.getElementById('status').innerText = mensagens.join(' ');
+                document.getElementById('atualizacao').innerText = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
+            } catch (erro) {
+                if (consultaAtual === idConsulta) {
+                    document.getElementById('status').innerText = 'Não foi possível carregar o clima. Tente novamente.';
+                    exibirPrevisao(null);
+                }
+            } finally {
+                if (consultaAtual === idConsulta) botao.disabled = false;
+            }
+        }
+
+        document.getElementById('pesquisa').addEventListener('input', (evento) => {
+            clearTimeout(temporizadorBusca);
+            const termo = evento.target.value.trim();
+            if (termo.length < 2) {
+                exibirSugestoes([]);
+                document.getElementById('status').innerText = '';
+                return;
+            }
+            temporizadorBusca = setTimeout(() => pesquisarCidades(termo), 350);
+        });
+        document.getElementById('atualizar').addEventListener('click', () => buscarClima(cidadeSelecionada));
+        document.addEventListener('click', (evento) => {
+            if (!evento.target.closest('.busca')) document.getElementById('sugestoes').hidden = true;
+        });
+        exibirCidade();
+        buscarClima(cidadeInicial);
+    </script>
+</body>
+</html>
